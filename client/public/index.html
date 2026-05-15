@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NanoClaw Workspace</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; }
+    #root { display: flex; height: 100vh; }
+    .sidebar { width: 280px; min-width: 200px; background: #161616; border-right: 1px solid #2a2a2a; display: flex; flex-direction: column; overflow: hidden; }
+    .sidebar-header { padding: 16px; border-bottom: 1px solid #2a2a2a; display: flex; align-items: center; gap: 10px; }
+    .sidebar-header h1 { margin: 0; font-size: 14px; font-weight: 600; color: #fff; }
+    .sidebar-header .logo { width: 24px; height: 24px; background: linear-gradient(135deg, #7c3aed, #a855f7); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .file-tree { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .tree-item { display: flex; align-items: center; gap: 6px; padding: 4px 16px; cursor: pointer; font-size: 13px; color: #bbb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
+    .tree-item:hover { background: #1f1f1f; color: #fff; }
+    .tree-item.active { background: #2a2a4a; color: #a78bfa; }
+    .tree-item .icon { font-size: 14px; flex-shrink: 0; }
+    .tree-item .name { overflow: hidden; text-overflow: ellipsis; }
+    .tree-breadcrumb { padding: 8px 16px 4px; font-size: 12px; color: #666; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .tree-breadcrumb span { cursor: pointer; color: #888; } .tree-breadcrumb span:hover { color: #a78bfa; }
+    .editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .editor-toolbar { padding: 10px 16px; border-bottom: 1px solid #2a2a2a; display: flex; align-items: center; gap: 8px; background: #141414; }
+    .editor-toolbar .filename { font-size: 13px; color: #bbb; flex: 1; }
+    .btn { padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s; }
+    .btn-primary { background: #7c3aed; color: #fff; } .btn-primary:hover { background: #6d28d9; }
+    .btn-danger { background: #991b1b; color: #fff; } .btn-danger:hover { background: #7f1d1d; }
+    .btn-ghost { background: #2a2a2a; color: #bbb; } .btn-ghost:hover { background: #333; color: #fff; }
+    .editor-content { flex: 1; overflow: hidden; position: relative; }
+    textarea.editor { width: 100%; height: 100%; background: #0f0f0f; color: #e0e0e0; border: none; outline: none; padding: 20px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; line-height: 1.6; resize: none; box-sizing: border-box; tab-size: 2; }
+    .image-preview { width: 100%; height: 100%; object-fit: contain; padding: 20px; box-sizing: border-box; }
+    .welcome { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; color: #555; }
+    .welcome h2 { color: #888; font-size: 18px; font-weight: 400; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 9999; animation: fadeIn 0.2s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 24px; min-width: 320px; }
+    .modal h3 { margin: 0 0 16px; font-size: 15px; color: #fff; }
+    .modal input { width: 100%; background: #0f0f0f; border: 1px solid #333; color: #e0e0e0; padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; }
+    .modal input:focus { border-color: #7c3aed; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    .new-btn-group { display: flex; gap: 4px; margin: 8px 16px; }
+    .new-btn-group .btn { flex: 1; font-size: 11px; padding: 4px 8px; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    const token = new URLSearchParams(location.search).get('token') || '';
+    const API = (path) => `/api${path}${path.includes('?') ? '&' : '?'}token=${token}`;
+    const headers = { 'x-token': token, 'Content-Type': 'application/json' };
+
+    const ICONS = {
+      dir: '📁', js: '📜', mjs: '📜', ts: '📜', tsx: '📜', jsx: '📜',
+      json: '{}', md: '📝', txt: '📄', sh: '⚙️', png: '🖼️', jpg: '🖼️',
+      jpeg: '🖼️', gif: '🖼️', webp: '🖼️', svg: '🖼️', html: '🌐',
+      css: '🎨', py: '🐍', default: '📄'
+    };
+    const IMG_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
+    const icon = (item) => {
+      if (item.type === 'dir') return ICONS.dir;
+      const ext = item.ext?.replace('.', '') || '';
+      return ICONS[ext] || ICONS.default;
+    };
+
+    let state = { path: '', items: [], file: null, content: '', dirty: false, toast: null, modal: null };
+    const setState = (patch) => { Object.assign(state, patch); render(); };
+    const toast = (msg) => { setState({ toast: msg }); setTimeout(() => setState({ toast: null }), 2500); };
+
+    async function loadDir(path = '') {
+      const res = await fetch(API(`/files?path=${encodeURIComponent(path)}`));
+      const data = await res.json();
+      setState({ path: data.path, items: data.items, file: null, content: '', dirty: false });
+    }
+
+    async function openFile(item) {
+      const rel = state.path ? `${state.path}/${item.name}` : item.name;
+      if (item.type === 'dir') return loadDir(rel);
+      const ext = item.ext?.replace('.', '');
+      if (IMG_EXTS.has(ext)) {
+        setState({ file: { ...item, rel, isImage: true }, content: '', dirty: false });
+        return;
+      }
+      const res = await fetch(API(`/file?path=${encodeURIComponent(rel)}`));
+      const data = await res.json();
+      setState({ file: { ...item, rel }, content: data.content || '', dirty: false });
+    }
+
+    async function saveFile() {
+      if (!state.file) return;
+      const res = await fetch('/api/file', { method: 'POST', headers, body: JSON.stringify({ path: state.file.rel, content: state.content }) });
+      const data = await res.json();
+      if (data.ok) { setState({ dirty: false }); toast('Saved ✓'); }
+      else toast('Error: ' + data.error);
+    }
+
+    async function deleteFile() {
+      if (!state.file) return;
+      if (!confirm(`Delete ${state.file.name}?`)) return;
+      const res = await fetch(API(`/file?path=${encodeURIComponent(state.file.rel)}`), { method: 'DELETE', headers: { 'x-token': token } });
+      const data = await res.json();
+      if (data.ok) { toast('Deleted'); loadDir(state.path); }
+      else toast('Error: ' + data.error);
+    }
+
+    async function createNew(type) {
+      setState({ modal: { type, value: '' } });
+    }
+
+    async function confirmCreate() {
+      const { type, value } = state.modal;
+      if (!value.trim()) return;
+      const rel = state.path ? `${state.path}/${value}` : value;
+      if (type === 'dir') {
+        await fetch('/api/mkdir', { method: 'POST', headers, body: JSON.stringify({ path: rel }) });
+        toast('Folder created');
+      } else {
+        await fetch('/api/file', { method: 'POST', headers, body: JSON.stringify({ path: rel, content: '' }) });
+        toast('File created');
+      }
+      setState({ modal: null });
+      loadDir(state.path);
+    }
+
+    function navUp() {
+      const parts = state.path.split('/').filter(Boolean);
+      parts.pop();
+      loadDir(parts.join('/'));
+    }
+
+    function render() {
+      const parts = state.path.split('/').filter(Boolean);
+      document.getElementById('root').innerHTML = `
+        <div class="sidebar">
+          <div class="sidebar-header">
+            <div class="logo">⚡</div>
+            <h1>NanoClaw Workspace</h1>
+          </div>
+          <div class="tree-breadcrumb">
+            <span onclick="navUp()">🏠</span>
+            ${parts.map((p, i) => `<span>/ </span><span onclick="navTo(${i})">${p}</span>`).join('')}
+          </div>
+          <div class="new-btn-group">
+            <button class="btn btn-ghost" onclick="createNew('file')">+ File</button>
+            <button class="btn btn-ghost" onclick="createNew('dir')">+ Folder</button>
+          </div>
+          <div class="file-tree">
+            ${state.path ? `<div class="tree-item" onclick="navUp()"><span class="icon">⬆️</span><span class="name">..</span></div>` : ''}
+            ${state.items.map(item => `
+              <div class="tree-item ${state.file?.name === item.name ? 'active' : ''}" onclick="openItem(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                <span class="icon">${icon(item)}</span>
+                <span class="name">${item.name}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div class="editor-area">
+          ${state.file ? `
+            <div class="editor-toolbar">
+              <span class="filename">${state.file.rel}${state.dirty ? ' •' : ''}</span>
+              ${!state.file.isImage ? `<button class="btn btn-primary" onclick="saveFile()">Save</button>` : ''}
+              <button class="btn btn-danger" onclick="deleteFile()">Delete</button>
+            </div>
+            <div class="editor-content">
+              ${state.file.isImage
+                ? `<img class="image-preview" src="${API(`/file?path=${encodeURIComponent(state.file.rel)}`)}" />`
+                : `<textarea class="editor" oninput="onEdit(this.value)" spellcheck="false">${escHtml(state.content)}</textarea>`
+              }
+            </div>
+          ` : `
+            <div class="welcome">
+              <div style="font-size:48px">⚡</div>
+              <h2>Select a file to edit</h2>
+              <p style="font-size:13px">Browse the workspace on the left</p>
+            </div>
+          `}
+        </div>
+        ${state.toast ? `<div class="toast">${state.toast}</div>` : ''}
+        ${state.modal ? `
+          <div class="modal-overlay" onclick="closeModal(event)">
+            <div class="modal">
+              <h3>New ${state.modal.type === 'dir' ? 'Folder' : 'File'}</h3>
+              <input id="modal-input" type="text" placeholder="${state.modal.type === 'dir' ? 'folder-name' : 'filename.js'}"
+                value="${state.modal.value}"
+                oninput="state.modal.value=this.value"
+                onkeydown="if(event.key==='Enter')confirmCreate()" />
+              <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="setState({modal:null})">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmCreate()">Create</button>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+      `;
+      if (state.modal) setTimeout(() => document.getElementById('modal-input')?.focus(), 50);
+    }
+
+    function escHtml(s) {
+      return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    window.navUp = navUp;
+    window.navTo = (i) => { const parts = state.path.split('/').filter(Boolean); loadDir(parts.slice(0, i+1).join('/')); };
+    window.openItem = openFile;
+    window.saveFile = saveFile;
+    window.deleteFile = deleteFile;
+    window.createNew = createNew;
+    window.confirmCreate = confirmCreate;
+    window.setState = setState;
+    window.onEdit = (v) => setState({ content: v, dirty: true });
+    window.closeModal = (e) => { if (e.target.classList.contains('modal-overlay')) setState({ modal: null }); };
+    window.state = state;
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); saveFile(); }
+    });
+
+    loadDir();
+  </script>
+</body>
+</html>
