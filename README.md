@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  A browser-based file manager for <a href="https://github.com/navarroido/nanoclaw">NanoClaw</a> agent workspaces.<br/>
+  A browser-based file manager for <a href="https://github.com/nanocoai/nanoclaw">NanoClaw</a> agent workspaces.<br/>
   Browse, edit, and manage your agent's files — from your laptop, phone, or anywhere.
 </p>
 
@@ -19,7 +19,7 @@
 
 ## What is this?
 
-When a [NanoClaw](https://github.com/navarroido/nanoclaw) agent runs, it lives in a container with a `/workspace/agent/` directory — scripts, config files, memory, logs, everything. **nanoclaw-workspace-ui** gives you a visual window into that workspace through your browser, with no SSH or CLI needed.
+When a [NanoClaw](https://github.com/nanocoai/nanoclaw) agent runs, it lives in a container with a `/workspace/agent/` directory — scripts, config files, memory, logs, everything. **nanoclaw-workspace-ui** gives you a visual window into that workspace through your browser, with no SSH or CLI needed.
 
 Start it with one command. It serves a file manager on a local port, and if you're on a remote server, it automatically creates a **free Cloudflare tunnel** so you can access it from anywhere.
 
@@ -224,11 +224,11 @@ Your workspace will always be at `https://workspace.yourdomain.com`.
 
 ## Part of the NanoClaw ecosystem
 
-This package is part of the [NanoClaw](https://github.com/navarroido/nanoclaw) agent platform.
+This package is part of the [NanoClaw](https://github.com/nanocoai/nanoclaw) agent platform.
 
 | Package | Description |
 |---------|-------------|
-| [nanoclaw](https://github.com/navarroido/nanoclaw) | Core agent platform |
+| [nanoclaw](https://github.com/nanocoai/nanoclaw) | Core agent platform |
 | **nanoclaw-workspace-ui** | Visual workspace file manager (this package) |
 
 ---
