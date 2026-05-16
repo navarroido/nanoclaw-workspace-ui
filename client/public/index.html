@@ -47,9 +47,14 @@
 <body>
   <div id="root"></div>
   <script type="module">
-    const token = new URLSearchParams(location.search).get('token') || '';
-    const API = (path) => `/api${path}${path.includes('?') ? '&' : '?'}token=${token}`;
-    const headers = { 'x-token': token, 'Content-Type': 'application/json' };
+    // If URL contains a token, exchange it for a session cookie via /auth
+    const urlToken = new URLSearchParams(location.search).get('token');
+    if (urlToken) {
+      location.replace('/auth?token=' + encodeURIComponent(urlToken));
+    }
+
+    const API = (path) => `/api${path}`;
+    const headers = { 'Content-Type': 'application/json' };
 
     const ICONS = {
       dir: '📁', js: '📜', mjs: '📜', ts: '📜', tsx: '📜', jsx: '📜',
@@ -68,8 +73,17 @@
     const setState = (patch) => { Object.assign(state, patch); render(); };
     const toast = (msg) => { setState({ toast: msg }); setTimeout(() => setState({ toast: null }), 2500); };
 
+    async function apiFetch(url, opts) {
+      const res = await fetch(url, opts);
+      if (res.status === 401) {
+        document.getElementById('root').innerHTML = `<div class="welcome" style="flex:1"><div style="font-size:48px">🔒</div><h2>Session expired</h2><p style="font-size:13px">Open the link you were given to log in again.</p></div>`;
+        throw new Error('Unauthorized');
+      }
+      return res;
+    }
+
     async function loadDir(path = '') {
-      const res = await fetch(API(`/files?path=${encodeURIComponent(path)}`));
+      const res = await apiFetch(API(`/files?path=${encodeURIComponent(path)}`));
       const data = await res.json();
       setState({ path: data.path, items: data.items, file: null, content: '', dirty: false });
     }
@@ -82,14 +96,14 @@
         setState({ file: { ...item, rel, isImage: true }, content: '', dirty: false });
         return;
       }
-      const res = await fetch(API(`/file?path=${encodeURIComponent(rel)}`));
+      const res = await apiFetch(API(`/file?path=${encodeURIComponent(rel)}`));
       const data = await res.json();
       setState({ file: { ...item, rel }, content: data.content || '', dirty: false });
     }
 
     async function saveFile() {
       if (!state.file) return;
-      const res = await fetch('/api/file', { method: 'POST', headers, body: JSON.stringify({ path: state.file.rel, content: state.content }) });
+      const res = await apiFetch('/api/file', { method: 'POST', headers, body: JSON.stringify({ path: state.file.rel, content: state.content }) });
       const data = await res.json();
       if (data.ok) { setState({ dirty: false }); toast('Saved ✓'); }
       else toast('Error: ' + data.error);
@@ -98,7 +112,7 @@
     async function deleteFile() {
       if (!state.file) return;
       if (!confirm(`Delete ${state.file.name}?`)) return;
-      const res = await fetch(API(`/file?path=${encodeURIComponent(state.file.rel)}`), { method: 'DELETE', headers: { 'x-token': token } });
+      const res = await apiFetch(API(`/file?path=${encodeURIComponent(state.file.rel)}`), { method: 'DELETE' });
       const data = await res.json();
       if (data.ok) { toast('Deleted'); loadDir(state.path); }
       else toast('Error: ' + data.error);
@@ -113,10 +127,10 @@
       if (!value.trim()) return;
       const rel = state.path ? `${state.path}/${value}` : value;
       if (type === 'dir') {
-        await fetch('/api/mkdir', { method: 'POST', headers, body: JSON.stringify({ path: rel }) });
+        await apiFetch('/api/mkdir', { method: 'POST', headers, body: JSON.stringify({ path: rel }) });
         toast('Folder created');
       } else {
-        await fetch('/api/file', { method: 'POST', headers, body: JSON.stringify({ path: rel, content: '' }) });
+        await apiFetch('/api/file', { method: 'POST', headers, body: JSON.stringify({ path: rel, content: '' }) });
         toast('File created');
       }
       setState({ modal: null });
