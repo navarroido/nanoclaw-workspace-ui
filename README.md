@@ -43,26 +43,32 @@ This is the case where NanoClaw runs in Docker on your laptop or desktop. The wo
 
 **Steps:**
 
-1. Open a terminal inside the agent container (or on the host if the workspace is mounted):
+1. **Find the workspace path on your host machine** — this is different from the path inside Docker.
+
+   The agent workspace lives in the NanoClaw data folder, typically under `groups/<your-group-name>/`. Not sure of the full path? Open a terminal, navigate to the folder you see in VS Code or Finder, and run:
+   ```bash
+   pwd
+   # example output: /Users/yourname/nanoclaw-v2/groups/dm-with-ido-navarro
+   ```
+   > **Important:** Inside the Docker container the workspace path is `/workspace/agent`. But when running the UI on your host machine, you need the *host* path — the one `pwd` gives you.
+
+2. Start the UI with that path:
 
    ```bash
-   npx nanoclaw-workspace-ui --workspace /workspace/agent --port 3100
+   npx nanoclaw-workspace-ui --workspace /Users/yourname/nanoclaw-v2/groups/dm-with-ido-navarro --port 3100 --no-tunnel
    ```
 
-2. The server starts and prints something like:
+3. The server starts and prints:
 
    ```
    🚀 NanoClaw Workspace UI
-      Workspace: /workspace/agent
+      Workspace: /Users/yourname/nanoclaw-v2/groups/dm-with-ido-navarro
       URL:       http://localhost:3100?token=abc123xyz
    ```
 
-3. Open `http://localhost:3100?token=abc123xyz` in your browser.
+4. Open `http://localhost:3100?token=abc123xyz` in your browser. The token is exchanged for a session cookie on first visit — the URL becomes clean and the token is gone from the address bar.
 
-4. The first click automatically exchanges the token for a **session cookie** and cleans the URL. You're in — no token visible in the address bar.
-
-> **Do you need the tunnel?**  
-> No. If you're on the same machine (or on the same local network), you can access `localhost` directly. You can disable the tunnel with `--no-tunnel` to skip starting cloudflared.
+> **Tip:** Pass `--no-tunnel` when running locally — there's no need for a Cloudflare tunnel if you're on the same machine.
 
 ---
 
