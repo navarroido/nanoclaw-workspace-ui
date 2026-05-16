@@ -22,6 +22,3 @@ jobs:
 
       - name: Check syntax
         run: node --check bin/cli.js server/index.js server/tunnel.js
-
-      - name: Verify bin is executable
-        run: node bin/cli.js --help 2>/dev/null || true
