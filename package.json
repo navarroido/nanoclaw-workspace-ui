@@ -1,7 +1,7 @@
 {
   "name": "nanoclaw-workspace-ui",
   "version": "1.0.0",
-  "description": "Visual file manager for NanoClaw agent workspaces — browse, edit and manage files from any browser, with built-in Cloudflare tunnel for remote access",
+  "description": "Visual file manager for NanoClaw agent workspaces \u2014 browse, edit and manage files from any browser, with built-in Cloudflare tunnel for remote access",
   "type": "module",
   "bin": {
     "nanoclaw-workspace-ui": "./bin/cli.js"
@@ -13,8 +13,8 @@
     "assets/"
   ],
   "scripts": {
-    "start": "node bin/cli.js",
-    "dev": "node bin/cli.js --no-tunnel",
+    "start": "node init && node bin/cli.js",
+    "dev": "node init && node bin/cli.js --no-tunnel",
     "lint": "node --check bin/cli.js server/index.js server/tunnel.js"
   },
   "keywords": [
